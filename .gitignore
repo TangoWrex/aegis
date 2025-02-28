@@ -1,0 +1,62 @@
+# Python-specific
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+dist/
+*.egg-info/
+*.egg
+pip-log.txt
+pip-delete-this-directory.txt
+venv/
+env/
+*.venv
+
+# Django-specific
+*.log
+*.pot
+*.pyc
+*.sqlite3  # SQLite database file (local dev only)
+db.sqlite3  # Default Django SQLite file
+migrations/  # Exclude migrations for now (can be regenerated)
+local_settings.py  # Local config overrides
+
+# Environment variables and secrets
+.env
+*.env
+secrets/
+*.key  # Encryption keys
+certs/  # Self-signed certificates
+
+# Static and media files (if generated locally)
+staticfiles/
+media/
+
+# IDE and editor files
+.idea/  # PyCharm/IntelliJ
+*.sublime-workspace
+*.sublime-project
+.vscode/  # Visual Studio Code
+*.swp
+*.swo
+
+# OS-specific
+.DS_Store  # macOS
+Thumbs.db  # Windows
+
+# Docker
+*.dockerignore
+Dockerfile.*  # Backup/alternative Dockerfiles
+docker-compose.override.yml  # Local overrides
+
+# Kubernetes
+*.kubeconfig  # Local Kubernetes config files
+
+# Miscellaneous
+*.bak
+*.backup
+*.tmp
+*.temp
+notes.txt
