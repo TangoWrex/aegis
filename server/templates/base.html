@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Aegis Server</title>
+    <style>
+        body { margin: 0; font-family: Arial, sans-serif; }
+        .sidebar {
+            height: 100%; width: 0; position: fixed; top: 0; left: 0;
+            background-color: #333; overflow-x: hidden; transition: 0.3s;
+        }
+        .sidebar a {
+            padding: 10px; text-decoration: none; font-size: 18px;
+            color: white; display: block; transition: 0.3s;
+        }
+        .sidebar a:hover { background-color: #555; }
+        .open-btn {
+            font-size: 20px; cursor: pointer; padding: 10px;
+            background-color: #333; color: white; border: none;
+        }
+        .content {
+            min-height: 100vh; display: flex; flex-direction: column;
+            justify-content: center; align-items: center; text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <button class="open-btn" onclick="toggleSidebar()">☰ Menu</button>
+    <div id="sidebar" class="sidebar">
+        <a href="/" onclick="toggleSidebar()">Home</a>
+        <a href="/map" onclick="toggleSidebar()">Map</a>
+        <a href="/about" onclick="toggleSidebar()">About</a>
+    </div>
+    <div class="content">
+        {% block content %}{% endblock %}
+    </div>
+
+    <script>
+        function toggleSidebar() {
+            var sidebar = document.getElementById("sidebar");
+            if (sidebar.style.width === "200px") {
+                sidebar.style.width = "0";
+            } else {
+                sidebar.style.width = "200px";
+            }
+        }
+    </script>
+</body>
+</html>
