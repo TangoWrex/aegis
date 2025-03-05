@@ -1,0 +1,61 @@
+FPV Drones
+433MHz 
+900MHz
+480-530MHz
+736MHz - newly soi
+
+915MHz - LoRA & HaLow
+
+Wi-Fi 
+2.4GHz
+5.8GHz
+
+
+GPS
+L1 - 1575.42MHz
+L2 - 1227.6MHz
+
+BeiDou (China)
+BeiDou (BDS) uses CDMA, with phases (BDS-2 regional, BDS-3 global).
+B1I: 1561.098 MHz (BDS-2/3)  
+Open service.
+
+B1C: 1575.42 MHz (BDS-3)  
+Civil, overlaps GPS L1 and Galileo E1.
+
+B2I: 1207.14 MHz (BDS-2)  
+Open service, overlaps Galileo E5b.
+
+B2a: 1176.45 MHz (BDS-3)  
+Civil, overlaps GPS L5 and Galileo E5a.
+
+B2b: 1207.14 MHz (BDS-3)  
+Civil, same as B2I.
+
+B3I: 1268.52 MHz (BDS-2/3)  
+Authorized service.
+
+
+GLONASS uses Frequency Division Multiple Access (FDMA) for legacy signals and is transitioning to Code Division Multiple Access (CDMA) with newer satellites. Frequencies vary by satellite for FDMA.
+L1 (FDMA): 1598.0625–1605.375 MHz  
+Formula: 1602 + 0.5625 × k (k = -7 to +6, channel number).
+
+Standard (ST) and High Precision (VT) codes.
+
+L2 (FDMA): 1242.9375–1248.625 MHz  
+Formula: 1246 + 0.4375 × k (k = -7 to +6).
+
+ST and VT codes.
+
+L3 (CDMA): 1202.025 MHz  
+Introduced with GLONASS-K1, civil L3OC signal.
+
+Future CDMA (GLONASS-K2/KM):
+L1OC: 1575.42 MHz (overlaps GPS L1).
+
+L2OC: 1246 MHz (near L2 FDMA).
+
+L5OCM: 1176.45 MHz (overlaps GPS L5, planned).
+
+
+

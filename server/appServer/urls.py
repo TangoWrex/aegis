@@ -16,18 +16,31 @@ Including another URLconf
 """
 from django.urls import path
 from django.shortcuts import render
+from search.views import search_view
+from django.db.models import Q
+from search.models import Document
+
 
 def index(request):
-    return render(request, 'index.html')
+    devices = []  # Placeholder - add real device data later
+    return render(request, 'index.html', {'devices': devices})
 
-def map_page(request):
-    return render(request, 'map.html')
+def console(request):
+    chat_query = request.GET.get('chat_q', '').strip()
+    chat_results = []
+    if chat_query:
+        chat_results = [f"Searched for: {chat_query}"]
+    return render(request, 'map.html', {
+        'chat_query': chat_query,
+        'chat_results': chat_results
+    })
 
 def about(request):
     return render(request, 'about.html')
 
 urlpatterns = [
     path('', index, name='index'),
-    path('map', map_page, name='map'),
+    path('console', console, name='console'),
     path('about', about, name='about'),
+    path('search', search_view, name='search'),
 ]

@@ -1,8 +1,18 @@
 {% extends "base.html" %}
 {% block content %}
-    <h1>Connected Devices</h1>
-    <ul>
-        <!-- Empty for now -->
-        <li>No devices connected yet.</li>
-    </ul>
+    <h1>Welcome to Aegis</h1>
+    <div style="width: 80%; max-width: 800px; margin: 20px auto; text-align: center;">
+        <h2>Connected Devices</h2>
+        <ul style="list-style: none; padding: 0;">
+            {% for device in devices %}
+                <li>{{ device }}</li>
+            {% empty %}
+                <li>No devices connected yet.</li>
+            {% endfor %}
+        </ul>
+        <div style="margin-top: 20px;">
+            <a href="/console" style="display: inline-block; padding: 10px 20px; background: #333; color: white; text-decoration: none; margin: 0 10px;">Console</a>
+            <a href="/search" style="display: inline-block; padding: 10px 20px; background: #333; color: white; text-decoration: none; margin: 0 10px;">Docs</a>
+        </div>
+    </div>
 {% endblock %}

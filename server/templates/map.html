@@ -1,5 +1,43 @@
 {% extends "base.html" %}
 {% block content %}
-    <h1>Device Map</h1>
-    <p>Map goes here (placeholder).</p>
+    <h1>Center Management Console</h1>
+    <div class="console-container">
+        <div class="device-monitor" style="width: 25%; height: 100%; background: #e0e0e0; padding: 10px; border: 1mm solid #333; box-sizing: border-box;">
+            <h3>Device Monitor</h3>
+            <ul style="margin: 0; padding: 0 0 0 20px;">
+                <li>No devices yet</li>
+            </ul>
+        </div>
+        <div id="map" style="width: 50%; height: 100%; border: 1mm solid #333; box-sizing: border-box;"></div>
+        <div class="chat-window" style="width: 25%; height: 100%; background: #f0f0f0; padding: 10px; border: 1mm solid #333; box-sizing: border-box; display: flex; flex-direction: column;">
+            <h3 style="margin: 0 0 10px 0;">Chat</h3>
+            <form method="GET" action="/console" style="margin-bottom: 10px; text-align: center;">
+                <input type="text" name="chat_q" placeholder="Search chat..." style="width: 90%; padding: 5px; display: inline-block;">
+                <button type="submit" style="display: none;">Search</button>
+            </form>
+            <div class="chat-messages" style="flex: 1; overflow-y: auto; margin-bottom: 10px;">
+                {% if chat_results %}
+                    <ul>
+                    {% for result in chat_results %}
+                        <li>{{ result }}</li>
+                    {% endfor %}
+                    </ul>
+                {% endif %}
+            </div>
+            <input type="text" placeholder="Type a message..." style="width: 90%; padding: 5px; text-align: center;">
+        </div>
+    </div>
+
+    <!-- Leaflet CSS and JS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            var map = L.map('map').setView([51.505, -0.09], 13);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                maxZoom: 19,
+                attribution: '© OpenStreetMap'
+            }).addTo(map);
+        });
+    </script>
 {% endblock %}

@@ -7,6 +7,7 @@
         .sidebar {
             height: 100%; width: 0; position: fixed; top: 0; left: 0;
             background-color: #333; overflow-x: hidden; transition: 0.3s;
+            z-index: 2; /* Above content, but we’ll adjust button */
         }
         .sidebar a {
             padding: 10px; text-decoration: none; font-size: 18px;
@@ -16,10 +17,21 @@
         .open-btn {
             font-size: 20px; cursor: pointer; padding: 10px;
             background-color: #333; color: white; border: none;
+            position: fixed; top: 0; left: 0; z-index: 1; /* Below sidebar when open */
         }
-        .content {
-            min-height: 100vh; display: flex; flex-direction: column;
-            justify-content: center; align-items: center; text-align: center;
+        .content { 
+            min-height: 100vh; display: flex; flex-direction: column; 
+            justify-content: flex-start; align-items: center; text-align: center;
+            transition: margin-left 0.3s;
+        }
+        .content.sidebar-open { margin-left: 200px; }
+        .search-bar { width: 80%; max-width: 600px; margin: 20px 0; }
+        .console-container { 
+            display: flex; 
+            width: 100%; 
+            max-width: none; 
+            gap: 0; 
+            height: calc(100vh - 80px); /* Adjust for header */
         }
     </style>
 </head>
@@ -27,7 +39,8 @@
     <button class="open-btn" onclick="toggleSidebar()">☰ Menu</button>
     <div id="sidebar" class="sidebar">
         <a href="/" onclick="toggleSidebar()">Home</a>
-        <a href="/map" onclick="toggleSidebar()">Map</a>
+        <a href="/console" onclick="toggleSidebar()">Console</a>
+        <a href="/search" onclick="toggleSidebar()">Docs</a>
         <a href="/about" onclick="toggleSidebar()">About</a>
     </div>
     <div class="content">
@@ -37,12 +50,24 @@
     <script>
         function toggleSidebar() {
             var sidebar = document.getElementById("sidebar");
+            var content = document.querySelector(".content");
             if (sidebar.style.width === "200px") {
                 sidebar.style.width = "0";
+                content.classList.remove("sidebar-open");
             } else {
                 sidebar.style.width = "200px";
+                content.classList.add("sidebar-open");
             }
         }
+
+        document.addEventListener("click", function(event) {
+            var sidebar = document.getElementById("sidebar");
+            var btn = document.querySelector(".open-btn");
+            if (sidebar.style.width === "200px" && !sidebar.contains(event.target) && !btn.contains(event.target)) {
+                sidebar.style.width = "0";
+                document.querySelector(".content").classList.remove("sidebar-open");
+            }
+        });
     </script>
 </body>
 </html>

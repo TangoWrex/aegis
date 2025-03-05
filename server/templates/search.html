@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block content %}
+    <h1>Document Search</h1>
+    <div style="width: 80%; max-width: 600px; margin: 20px auto; padding: 20px; border: 2px solid #333; background: #f9f9f9;">
+        <form method="GET" action="/search">
+            <input type="text" name="q" value="{{ query }}" placeholder="Search documents..." style="width: 100%; padding: 8px; margin-bottom: 10px;">
+            <button type="submit" style="display: none;">Search</button>
+        </form>
+        {% if results %}
+            <h3>Results</h3>
+            <ul>
+            {% for doc in results %}
+                <li><a href="/static/docs/{{ doc.title }}">{{ doc.title }}</a> - {{ doc.content|truncatewords:20 }}</li>
+            {% endfor %}
+            </ul>
+        {% elif query %}
+            <p>No results found for "{{ query }}".</p>
+        {% endif %}
+        <h3>All Documents</h3>
+        <ul>
+        {% for doc in all_docs %}
+            <li><a href="/static/docs/{{ doc.title }}">{{ doc.title }}</a></li>
+        {% empty %}
+            <li>No documents available.</li>
+        {% endfor %}
+        </ul>
+    </div>
+{% endblock %}
