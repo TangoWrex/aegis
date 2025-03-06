@@ -34,6 +34,7 @@
             height: calc(100vh - 80px); /* Adjust for header */
         }
     </style>
+    <script>window.AEGIS_API_KEY = "{{ api_key|default:'MISSING_KEY' }}";</script>
 </head>
 <body>
     <button class="open-btn" onclick="toggleSidebar()">☰ Menu</button>

@@ -1,0 +1,441 @@
+===== Project Tree (Top Level) =====
+.
+├── aegis_files.txt
+├── certs
+├── client
+├── docker
+├── documentation
+├── fetchCode.sh
+├── kubernetes
+├── notes.txt
+├── project_tree.txt
+├── README.md
+├── server
+└── venv
+
+7 directories, 5 files
+
+
+===== server/appServer/ Tree (First Layer) =====
+.
+├── asgi.py
+├── __init__.py
+├── __pycache__
+├── settings.py
+├── urls.py
+└── wsgi.py
+
+1 directory, 5 files
+
+
+===== urls.py =====
+"""
+URL configuration for appServer project.
+
+The `urlpatterns` list routes URLs to views. For more information please see:
+    https://docs.djangoproject.com/en/5.1/topics/http/urls/
+Examples:
+Function views
+    1. Add an import:  from my_app import views
+    2. Add a URL to urlpatterns:  path('', views.home, name='home')
+Class-based views
+    1. Add an import:  from other_app.views import Home
+    2. Add a URL to urlpatterns:  path('', Home.as_view(), name='home')
+Including another URLconf
+    1. Import the include() function: from django.urls import include, path
+    2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
+"""
+from django.urls import path
+from django.shortcuts import render
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+from search.views import search_view
+from django.db.models import Q
+from search.models import Document, DeviceLocation, APIKey, ChatMessage
+import json
+
+def index(request):
+    devices = []
+    return render(request, 'index.html', {'devices': devices})
+
+def console(request):
+    chat_query = request.GET.get('chat_q', '').strip()
+    chat_results = []
+    if chat_query:
+        chat_results = ChatMessage.objects.filter(message__icontains=chat_query).order_by('-timestamp')[:10]
+    
+    connected_devices = DeviceLocation.objects.values('device_id').distinct()
+    devices = [device['device_id'] for device in connected_devices]
+    
+    return render(request, 'map.html', {
+        'chat_query': chat_query,
+        'chat_results': [{'device_id': msg.device_id, 'message': msg.message} for msg in chat_results],
+        'devices': devices
+    })
+
+def about(request):
+    return render(request, 'about.html')
+
+@csrf_exempt
+def device_locations(request):
+    api_key = request.headers.get('X-API-Key')
+    if not api_key or not APIKey.objects.filter(key=api_key).exists():
+        return JsonResponse({"error": "Invalid or missing API key"}, status=403)
+
+    if request.method == "POST":
+        try:
+            data = json.loads(request.body)
+            device_id = data.get("device_id")
+            latitude = float(data.get("latitude", 0))
+            longitude = float(data.get("longitude", 0))
+            DeviceLocation.objects.create(
+                device_id=device_id,
+                latitude=latitude,
+                longitude=longitude
+            )
+            return JsonResponse({"status": "success"}, status=201)
+        except (json.JSONDecodeError, ValueError, KeyError) as e:
+            return JsonResponse({"error": str(e)}, status=400)
+    elif request.method == "GET":
+        locations = DeviceLocation.objects.all()
+        data = [{"lat": loc.latitude, "lon": loc.longitude, "device_id": loc.device_id} for loc in locations]
+        return JsonResponse(data, safe=False)
+    return JsonResponse({"error": "Method not allowed"}, status=405)
+
+@csrf_exempt
+def chat_messages(request):
+    api_key = request.headers.get('X-API-Key')
+    if not api_key or not APIKey.objects.filter(key=api_key).exists():
+        return JsonResponse({"error": "Invalid or missing API key"}, status=403)
+
+    if request.method == "POST":
+        try:
+            data = json.loads(request.body)
+            device_id = data.get("device_id")
+            message = data.get("message")
+            ChatMessage.objects.create(device_id=device_id, message=message)
+            return JsonResponse({"status": "success"}, status=201)
+        except (json.JSONDecodeError, ValueError, KeyError) as e:
+            return JsonResponse({"error": str(e)}, status=400)
+    return JsonResponse({"error": "Method not allowed"}, status=405)
+
+urlpatterns = [
+    path('', index, name='index'),
+    path('console', console, name='console'),
+    path('about', about, name='about'),
+    path('search', search_view, name='search'),
+    path('api/locations/', device_locations, name='device_locations'),
+    path('api/chat/', chat_messages, name='chat_messages'),
+]
+
+===== map.html =====
+{% extends "base.html" %}
+{% block content %}
+    <h1>Center Management Console</h1>
+    <div class="console-container">
+        <div class="device-monitor" style="width: 25%; height: 100%; background: #e0e0e0; padding: 10px; border: 1mm solid #333; box-sizing: border-box;">
+            <h3>Device Monitor</h3>
+            <ul style="margin: 0; padding: 0 0 0 20px;">
+                {% for device in devices %}
+                    <li>{{ device }}</li>
+                {% empty %}
+                    <li>No devices connected yet</li>
+                {% endfor %}
+            </ul>
+        </div>
+        <div id="map" style="width: 50%; height: 100%; border: 1mm solid #333; box-sizing: border-box;"></div>
+        <div class="chat-window" style="width: 25%; height: 100%; background: #f0f0f0; padding: 10px; border: 1mm solid #333; box-sizing: border-box; display: flex; flex-direction: column;">
+            <h3 style="margin: 0 0 10px 0;">Chat</h3>
+            <form method="GET" action="/console" style="margin-bottom: 10px; text-align: center;">
+                <input type="text" name="chat_q" placeholder="Search chat..." style="width: 90%; padding: 5px; display: inline-block;">
+                <button type="submit" style="display: none;">Search</button>
+            </form>
+            <div class="chat-messages" style="flex: 1; overflow-y: auto; margin-bottom: 10px;">
+                {% if chat_results %}
+                    <ul>
+                    {% for result in chat_results %}
+                        <li>{{ result.device_id }}: {{ result.message }}</li>
+                    {% endfor %}
+                    </ul>
+                {% endif %}
+            </div>
+            <form id="chat-form" style="display: flex;">
+                <input type="text" id="chat-input" placeholder="Type a message..." style="width: 90%; padding: 5px; flex-grow: 1;">
+                <button type="submit" style="padding: 5px;">Send</button>
+            </form>
+            <script>
+                document.getElementById('chat-form').addEventListener('submit', function(e) {
+                    e.preventDefault();
+                    var message = document.getElementById('chat-input').value;
+                    if (message) {
+                        fetch('/api/chat/', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-API-Key': '550e8400-e29b-41d4-a716-446655440000'  // Replace with your key
+                            },
+                            body: JSON.stringify({
+                                device_id: 'console_user',  // Temp ID—make dynamic later
+                                message: message
+                            })
+                        }).then(response => {
+                            if (response.ok) {
+                                document.getElementById('chat-input').value = '';
+                                window.location.reload();  // Refresh chat—simplistic for now
+                            }
+                        });
+                    }
+                });
+            </script>
+        </div>
+    </div>
+
+    <!-- Leaflet CSS and JS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            var map = L.map('map').setView([51.505, -0.09], 13);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                maxZoom: 19,
+                attribution: '© OpenStreetMap'
+            }).addTo(map);
+
+            // Custom red icon
+            var redIcon = L.icon({
+                iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png',
+                shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+                iconSize: [25, 41],
+                iconAnchor: [12, 41],
+                popupAnchor: [1, -34],
+                shadowSize: [41, 41]
+            });
+
+            // Store markers
+            var markers = {};
+
+            function updateMarkers() {
+                fetch('/api/locations/')
+                    .then(response => response.json())
+                    .then(data => {
+                        console.log('Fetched data:', data);
+                        data.forEach(loc => {
+                            var key = loc.device_id;
+                            if (!markers[key]) {
+                                markers[key] = L.marker([loc.lat, loc.lon], {icon: redIcon})
+                                    .bindPopup(loc.device_id)
+                                    .addTo(map);
+                            } else {
+                                markers[key].setLatLng([loc.lat, loc.lon]);
+                            }
+                        });
+                    })
+                    .catch(error => console.error('Error fetching locations:', error));
+            }
+
+            updateMarkers();
+            setInterval(updateMarkers, 5000);
+        });
+    </script>
+{% endblock %}
+
+===== base.html =====
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Aegis Server</title>
+    <style>
+        body { margin: 0; font-family: Arial, sans-serif; }
+        .sidebar {
+            height: 100%; width: 0; position: fixed; top: 0; left: 0;
+            background-color: #333; overflow-x: hidden; transition: 0.3s;
+            z-index: 2; /* Above content, but we’ll adjust button */
+        }
+        .sidebar a {
+            padding: 10px; text-decoration: none; font-size: 18px;
+            color: white; display: block; transition: 0.3s;
+        }
+        .sidebar a:hover { background-color: #555; }
+        .open-btn {
+            font-size: 20px; cursor: pointer; padding: 10px;
+            background-color: #333; color: white; border: none;
+            position: fixed; top: 0; left: 0; z-index: 1; /* Below sidebar when open */
+        }
+        .content { 
+            min-height: 100vh; display: flex; flex-direction: column; 
+            justify-content: flex-start; align-items: center; text-align: center;
+            transition: margin-left 0.3s;
+        }
+        .content.sidebar-open { margin-left: 200px; }
+        .search-bar { width: 80%; max-width: 600px; margin: 20px 0; }
+        .console-container { 
+            display: flex; 
+            width: 100%; 
+            max-width: none; 
+            gap: 0; 
+            height: calc(100vh - 80px); /* Adjust for header */
+        }
+    </style>
+</head>
+<body>
+    <button class="open-btn" onclick="toggleSidebar()">☰ Menu</button>
+    <div id="sidebar" class="sidebar">
+        <a href="/" onclick="toggleSidebar()">Home</a>
+        <a href="/console" onclick="toggleSidebar()">Console</a>
+        <a href="/search" onclick="toggleSidebar()">Docs</a>
+        <a href="/about" onclick="toggleSidebar()">About</a>
+    </div>
+    <div class="content">
+        {% block content %}{% endblock %}
+    </div>
+
+    <script>
+        function toggleSidebar() {
+            var sidebar = document.getElementById("sidebar");
+            var content = document.querySelector(".content");
+            if (sidebar.style.width === "200px") {
+                sidebar.style.width = "0";
+                content.classList.remove("sidebar-open");
+            } else {
+                sidebar.style.width = "200px";
+                content.classList.add("sidebar-open");
+            }
+        }
+
+        document.addEventListener("click", function(event) {
+            var sidebar = document.getElementById("sidebar");
+            var btn = document.querySelector(".open-btn");
+            if (sidebar.style.width === "200px" && !sidebar.contains(event.target) && !btn.contains(event.target)) {
+                sidebar.style.width = "0";
+                document.querySelector(".content").classList.remove("sidebar-open");
+            }
+        });
+    </script>
+</body>
+</html>
+
+===== models.py =====
+from django.db import models
+
+class Document(models.Model):
+    title = models.CharField(max_length=255)
+    content = models.TextField()
+    file_path = models.CharField(max_length=255, blank=True)
+
+    def __str__(self):
+        return str(self.title)
+        
+
+class DeviceLocation(models.Model):
+    device_id = models.CharField(max_length=50)
+    latitude = models.FloatField()
+    longitude = models.FloatField()
+    timestamp = models.DateTimeField(auto_now_add=True)
+
+class APIKey(models.Model):
+    key = models.CharField(max_length=40, unique=True)  
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.key
+    
+class ChatMessage(models.Model):
+    device_id = models.CharField(max_length=50)
+    message = models.TextField()
+    timestamp = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.device_id}: {self.message}"
+
+===== client.py =====
+#!/usr/bin/env python3
+from gps_client import GPSClient
+from server_comm import ServerComm
+import time
+
+def main():
+    gps = GPSClient()
+    server = ServerComm(api_key="550e8400-e29b-41d4-a716-446655440000")  # Replace with your key
+    device_id = "test_device"
+
+    # Send a test chat message once
+    server.send_chat(device_id, "Hello from test_device!")
+
+    while True:
+        lat, lon = gps.get_position()
+        if lat and lon:
+            success = server.send_gps(device_id, lat, lon)
+            print(f"Sent: {{lat: {lat}, lon: {lon}}}, Success: {success}")
+        else:
+            print("No GPS fix yet")
+        time.sleep(1)
+
+if __name__ == "__main__":
+    main()
+
+===== gps_client.py =====
+#!/usr/bin/env python3
+import gpsd
+import time
+
+class GPSClient:
+    def __init__(self):
+        gpsd.connect()
+
+    def get_position(self):
+        try:
+            packet = gpsd.get_current()
+            latitude = packet.lat
+            longitude = packet.lon
+            if latitude is not None and longitude is not None:
+                return latitude, longitude
+            return None, None
+        except (gpsd.NoFixError, AttributeError):
+            return None, None
+
+def run_gps():
+    gps = GPSClient()
+    while True:
+        lat, lon = gps.get_position()
+        if lat and lon:
+            print(f"Lat: {lat}, Lon: {lon}")
+        else:
+            print("No fix—waiting for GPS data")
+        time.sleep(1)
+
+if __name__ == "__main__":
+    run_gps()
+
+===== server_comm.py =====
+import requests
+
+class ServerComm:
+    def __init__(self, base_url="http://localhost:8000", api_key=None):
+        self.base_url = base_url
+        self.headers = {"X-API-Key": api_key} if api_key else {}
+
+    def send_gps(self, device_id, latitude, longitude):
+        data = {
+            "device_id": device_id,
+            "latitude": latitude,
+            "longitude": longitude
+        }
+        try:
+            response = requests.post(f"{self.base_url}/api/locations/", json=data, headers=self.headers)
+            return response.status_code == 201
+        except requests.RequestException as e:
+            print(f"Server error: {e}")
+            return False
+
+    def send_chat(self, device_id, message):
+        data = {
+            "device_id": device_id,
+            "message": message
+        }
+        try:
+            response = requests.post(f"{self.base_url}/api/chat/", json=data, headers=self.headers)
+            return response.status_code == 201
+        except requests.RequestException as e:
+            print(f"Server error: {e}")
+            return False
+

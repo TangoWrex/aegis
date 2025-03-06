@@ -1,11 +1,15 @@
 {% extends "base.html" %}
 {% block content %}
-    <h1>Center Management Console</h1>
+    <h1>Aegis Management Console</h1>
     <div class="console-container">
         <div class="device-monitor" style="width: 25%; height: 100%; background: #e0e0e0; padding: 10px; border: 1mm solid #333; box-sizing: border-box;">
             <h3>Device Monitor</h3>
             <ul style="margin: 0; padding: 0 0 0 20px;">
-                <li>No devices yet</li>
+                {% for device in devices %}
+                    <li>{{ device }}</li>
+                {% empty %}
+                    <li>No devices connected yet</li>
+                {% endfor %}
             </ul>
         </div>
         <div id="map" style="width: 50%; height: 100%; border: 1mm solid #333; box-sizing: border-box;"></div>
@@ -19,12 +23,39 @@
                 {% if chat_results %}
                     <ul>
                     {% for result in chat_results %}
-                        <li>{{ result }}</li>
+                        <li>{{ result.device_id }}: {{ result.message }}</li>
                     {% endfor %}
                     </ul>
                 {% endif %}
             </div>
-            <input type="text" placeholder="Type a message..." style="width: 90%; padding: 5px; text-align: center;">
+            <form id="chat-form" style="display: flex;">
+                <input type="text" id="chat-input" placeholder="Type a message..." style="width: 90%; padding: 5px; flex-grow: 1;">
+                <button type="submit" style="padding: 5px;">Send</button>
+            </form>
+            <script>
+                document.getElementById('chat-form').addEventListener('submit', function(e) {
+                    e.preventDefault();
+                    var message = document.getElementById('chat-input').value;
+                    if (message) {
+                        fetch('/api/chat/', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-API-Key': window.AEGIS_API_KEY || 'MISSING_KEY'
+                            },
+                            body: JSON.stringify({
+                                device_id: 'console_user',
+                                message: message
+                            })
+                        }).then(response => {
+                            if (response.ok) {
+                                document.getElementById('chat-input').value = '';
+                                window.location.reload();
+                            }
+                        });
+                    }
+                });
+            </script>
         </div>
     </div>
 
@@ -38,6 +69,56 @@
                 maxZoom: 19,
                 attribution: '© OpenStreetMap'
             }).addTo(map);
+            
+
+            // Ensure map renders correctly
+            setTimeout(() => map.invalidateSize(), 100);
+
+            // Custom red icon
+            var redIcon = L.icon({
+                iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png',
+                shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+                iconSize: [25, 41],
+                iconAnchor: [12, 41],
+                popupAnchor: [1, -34],
+                shadowSize: [41, 41]
+            });
+
+            // Store markers
+            var markers = {};
+
+            function updateMarkers() {
+                fetch('/api/locations/', {
+                    headers: {
+                        'X-API-Key': window.AEGIS_API_KEY || 'MISSING_KEY'  // Add API key header
+                    }
+                })
+                    .then(response => {
+                        if (!response.ok) {
+                            console.error('Fetch failed:', response.status, response.statusText);
+                            return response.text().then(text => { throw new Error(text); });
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        console.log('Fetched data:', data);
+                        data.forEach(loc => {
+                            var key = loc.device_id;
+                            if (!markers[key]) {
+                                markers[key] = L.marker([loc.lat, loc.lon], {icon: redIcon})
+                                    .bindPopup(loc.device_id)
+                                    .addTo(map);
+                            } else {
+                                markers[key].setLatLng([loc.lat, loc.lon]);
+                            }
+                        });
+                        map.invalidateSize();  // Refresh map after adding markers
+                    })
+                    .catch(error => console.error('Error fetching locations:', error));
+            }
+
+            updateMarkers();
+            setInterval(updateMarkers, 5000);
         });
     </script>
 {% endblock %}

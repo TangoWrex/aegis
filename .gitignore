@@ -60,3 +60,6 @@ docker-compose.override.yml  # Local overrides
 *.tmp
 *.temp
 notes.txt
+
+# docs 
+static/docs/*.env

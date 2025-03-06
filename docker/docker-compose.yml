@@ -1,0 +1,9 @@
+services:
+  client:
+    build: ./client
+    environment:
+      - AEGIS_API_KEY=${AEGIS_API_KEY}
+  server:
+    build: ./server
+    environment:
+      - AEGIS_API_KEY=${AEGIS_API_KEY}  # Optional, if server needs it
