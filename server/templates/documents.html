@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Aegis Documents</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 0; padding: 10px; }
+        .document-list { max-width: 800px; margin: 20px auto; }
+        .document-item { margin: 10px 0; padding: 10px; background: #ffffff; border: 1px solid #ccc; border-radius: 5px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); cursor: pointer; }
+        .document-item:hover { background: #f5f5f5; }
+    </style>
+</head>
+<body>
+    <h1>Aegis Documents</h1>
+    <div class="document-list">
+        {% for doc in documents %}
+            <div class="document-item" onclick="alert('View document: {{ doc.title }} (content not implemented)')">
+                {{ doc.title }}
+            </div>
+        {% endfor %}
+        {% if not documents %}
+            <p>No documents available.</p>
+        {% endif %}
+    </div>
+    <a href="/client/">Back to Client Console</a>
+</body>
+</html>

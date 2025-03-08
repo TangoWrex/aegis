@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aegis Client Console</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            min-height: 100vh; /* Ensure body takes full viewport height */
+            position: relative;
+        }
+        h1 {
+            text-align: center;
+            margin: 0;
+            padding: 10px 0;
+            height: 40px; /* Fixed height for header to calculate available space */
+        }
+        .console-container {
+            display: flex;
+            height: calc(100vh - 40px); /* Subtract header height from viewport height */
+            width: 100%;
+            overflow-y: auto; /* Allow scrolling if content overflows */
+        }
+        .menu-icon {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            font-size: 24px;
+            cursor: pointer;
+            z-index: 1001;
+        }
+        .device-monitor {
+            width: 25%;
+            height: 100%;
+            background: #e0e0e0;
+            padding: 10px;
+            border: 1mm solid #333;
+            box-sizing: border-box;
+            overflow-y: auto; /* Allow scrolling within device monitor */
+        }
+        #map {
+            width: 50%;
+            height: 100%;
+            border: 1mm solid #333;
+            box-sizing: border-box;
+        }
+        .chat-window {
+            width: 25%;
+            height: 100%;
+            background: #f0f0f0;
+            padding: 10px;
+            border: 1mm solid #333;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between; /* Push chat messages up and form to bottom */
+        }
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto; /* Allow scrolling within chat messages */
+            padding: 10px;
+            background: white;
+            border: 1px solid #ccc;
+            display: flex;
+            flex-direction: column;
+        }
+        .chat-form {
+            display: flex;
+            margin-top: 10px; /* Ensure spacing from messages */
+        }
+        .chat-form input {
+            width: 90%;
+            padding: 5px;
+            flex-grow: 1;
+        }
+        .chat-form button {
+            padding: 5px;
+        }
+        .dropdown {
+            position: relative;
+            display: inline-block;
+            margin-bottom: 10px;
+        }
+        .dropbtn {
+            background-color: #4CAF50;
+            color: white;
+            padding: 5px;
+            border: none;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        .dropdown-content {
+            display: none;
+            position: absolute;
+            background-color: #f9f9f9;
+            min-width: 100px;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+            z-index: 1;
+        }
+        .dropdown-content button {
+            color: black;
+            padding: 5px 10px;
+            text-decoration: none;
+            display: block;
+            width: 100%;
+            text-align: left;
+            background: none;
+            border: none;
+        }
+        .dropdown-content button:hover { background-color: #ddd; }
+        .dropdown:hover .dropdown-content { display: block; }
+        #menu {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 200px;
+            height: 100%;
+            background: #f0f0f0;
+            padding: 10px;
+            border-right: 1mm solid #333;
+            z-index: 1000;
+        }
+    </style>
+</head>
+<body>
+    <div class="menu-icon" onclick="toggleMenu()">☰</div>
+    <h1>Aegis Client Console</h1>
+    <div class="console-container">
+        <div class="device-monitor">
+            <h3>Device Monitor</h3>
+            <div id="device-list">
+                {% for device in devices %}
+                    <div style="margin: 10px 0; padding: 10px; background: #ffffff; border: 1px solid #ccc; border-radius: 5px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                        <strong>Device ID:</strong> {{ device.device_id }}<br>
+                        <strong>Type:</strong> {{ device.type }}<br>
+                        <strong>Last Checkin:</strong> {{ device.last_checkin }}<br>
+                        <strong>Last Location:</strong> {{ device.last_location }}
+                    </div>
+                {% empty %}
+                    <div style="margin: 10px 0; padding: 10px; background: #ffffff; border: 1px solid #ccc; border-radius: 5px;">
+                        No devices connected yet
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+        <div id="map"></div>
+        <div class="chat-window">
+            <h3 style="margin: 0 0 10px 0;">Chat</h3>
+            <div class="dropdown">
+                <button class="dropbtn">Menu</button>
+                <div class="dropdown-content">
+                    <button id="clear-chat-btn">Clear Chat</button>
+                </div>
+            </div>
+            <div class="chat-messages" id="chat-messages"></div>
+            <form id="chat-form" class="chat-form">
+                <input type="text" id="chat-input" placeholder="Type a message...">
+                <button type="submit">Send</button>
+            </form>
+        </div>
+    </div>
+
+    <div id="menu">
+        <h3>Menu</h3>
+        <button onclick="window.location.href='/documents/'">Documents</button>
+        <button onclick="window.location.href='/about'">About</button>
+        <button onclick="window.location.href='/login/?logout=true'">Logout</button>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        const API_KEY = '{{ api_key }}';
+        const DEVICE_ID = '{{ device_id }}';
+
+        let menuVisible = false;
+
+        function toggleMenu() {
+            const menu = document.getElementById('menu');
+            menuVisible = !menuVisible;
+            menu.style.display = menuVisible ? 'block' : 'none';
+        }
+
+        // Close menu when clicking outside
+        document.addEventListener('click', function(event) {
+            const menu = document.getElementById('menu');
+            const menuIcon = document.querySelector('.menu-icon');
+            if (menuVisible && !menu.contains(event.target) && !menuIcon.contains(event.target)) {
+                menu.style.display = 'none';
+                menuVisible = false;
+            }
+        });
+
+        // Initialize map
+        var map = L.map('map').setView([44.369, -85.977], 13);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '© OpenStreetMap'
+        }).addTo(map);
+
+        var markers = {};
+        function updateMap() {
+            fetch('/api/locations/', {
+                headers: { 'X-API-Key': API_KEY }
+            })
+            .then(response => response.json())
+            .then(data => {
+                var deviceList = document.getElementById('device-list');
+                deviceList.innerHTML = '';
+                data.forEach(loc => {
+                    var key = loc.device_id;
+                    if (!markers[key]) {
+                        markers[key] = L.marker([loc.lat, loc.lon]).bindPopup(loc.device_id).addTo(map);
+                    } else {
+                        markers[key].setLatLng([loc.lat, loc.lon]);
+                    }
+                });
+                map.invalidateSize();
+            })
+            .catch(error => console.error('Error updating map:', error));
+        }
+
+        // Chat functionality
+        function updateChat() {
+            fetch('/api/chat/', {
+                headers: { 'X-API-Key': API_KEY }
+            })
+            .then(response => response.json())
+            .then(data => {
+                var chatMessages = document.getElementById('chat-messages');
+                chatMessages.innerHTML = '';
+                let colorIndex = 0;
+                data.forEach(msg => {
+                    var div = document.createElement('div');
+                    div.style.margin = '5px 0';
+                    div.style.textAlign = 'left';
+                    div.style.padding = '5px';
+                    div.style.background = colorIndex % 2 === 0 ? '#f5f5f5' : '#ffffff';
+                    div.style.borderRadius = '5px';
+                    div.textContent = `[${msg.timestamp}] ${msg.device_id}: ${msg.message}`;
+                    chatMessages.appendChild(div);
+                    colorIndex++;
+                });
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+            })
+            .catch(error => console.error('Error updating chat:', error));
+        }
+
+        document.getElementById('chat-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            var message = document.getElementById('chat-input').value;
+            if (message) {
+                fetch('/api/chat/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-API-Key': API_KEY
+                    },
+                    body: JSON.stringify({ device_id: DEVICE_ID, message: message })
+                }).then(response => {
+                    if (response.ok) {
+                        document.getElementById('chat-input').value = '';
+                        updateChat();
+                    }
+                });
+            }
+        });
+
+        document.getElementById('clear-chat-btn').addEventListener('click', function() {
+            var chatMessages = document.getElementById('chat-messages');
+            chatMessages.innerHTML = '';
+        });
+
+        // Initial updates and polling
+        updateMap();
+        updateChat();
+        setInterval(updateMap, 5000);
+        setInterval(updateChat, 5000);
+    </script>
+</body>
+</html>

@@ -2,25 +2,155 @@
 {% block content %}
     <h1>Aegis Management Console</h1>
     <div class="console-container">
-        <div class="device-monitor" style="width: 25%; height: 100%; background: #e0e0e0; padding: 10px; border: 1mm solid #333; box-sizing: border-box;">
-            <h3>Device Monitor</h3>
-            <div style="overflow-y: auto; flex-grow: 1;">
-                {% for device in devices %}
-                    <div style="margin: 10px 0; padding: 10px; background: #ffffff; border: 1px solid #ccc; border-radius: 5px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-                        <strong>Device ID:</strong> {{ device.device_id }}<br>
-                        <strong>Type:</strong> {{ device.type }}<br>
-                        <strong>Last Checkin:</strong> {{ device.last_checkin }}<br>
-                        <strong>Last Location:</strong> {{ device.last_location }}
-                    </div>
-                {% empty %}
-                    <div style="margin: 10px 0; padding: 10px; background: #ffffff; border: 1px solid #ccc; border-radius: 5px;">
-                        No devices connected yet
-                    </div>
-                {% endfor %}
+        <div class="left-column" style="width: 25%; height: 100%; display: flex; flex-direction: column; border: 1mm solid #333; box-sizing: border-box; float: left;">
+            <div class="device-monitor" style="background: #e0e0e0; padding: 10px; flex-grow: 1; overflow-y: auto;">
+                <h3>Device Monitor</h3>
+                <div style="overflow-y: auto; flex-grow: 1;">
+                    {% for device in devices %}
+                        <div style="margin: 10px 0; padding: 10px; background: #ffffff; border: 1px solid #ccc; border-radius: 5px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                            <strong>Device ID:</strong> {{ device.device_id }}<br>
+                            <strong>Type:</strong> {{ device.type }}<br>
+                            <strong>Last Checkin:</strong> {{ device.last_checkin }}<br>
+                            <strong>Last Location:</strong> {{ device.last_location }}
+                        </div>
+                    {% empty %}
+                        <div style="margin: 10px 0; padding: 10px; background: #ffffff; border: 1px solid #ccc; border-radius: 5px;">
+                            No devices connected yet
+                        </div>
+                    {% endfor %}
+                </div>
             </div>
+            <div class="live-feeds" style="background: #d0e0d0; padding: 10px; flex-grow: 1; overflow-y: auto;">
+                <h3 style="margin: 0; display: inline-block;">Live Feeds</h3>
+                <button id="add-camera-btn" style="float: right; background: none; border: none; font-size: 24px; cursor: pointer; padding: 0 5px;">+</button>
+                <div id="camera-list" style="margin-top: 10px;">
+                    <ul id="camera-links" style="list-style-type: none; padding: 0; margin: 0;">
+                        {% for camera in cameras %}
+                            <li style="margin: 5px 0; padding: 8px; background: #ffffff; border: 1px solid #ccc; border-radius: 5px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+                                <a href="http://{{ camera.ip }}:{{ camera.port }}" target="_blank" style="text-decoration: none; color: #007bff;">{{ camera.name }}</a>
+                            </li>
+                        {% empty %}
+                            <li style="margin: 5px 0; padding: 8px; background: #f8f9fa; border: 1px solid #ccc; border-radius: 5px; color: #666;">No cameras configured yet.</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+            <!-- Modal for adding a camera -->
+            <div id="camera-modal" style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 20px; border: 1px solid #ccc; box-shadow: 0 0 10px rgba(0,0,0,0.5); z-index: 1000;">
+                <h4>Add New Camera</h4>
+                <form id="camera-form">
+                    <label for="modal-camera-name">Name:</label><br>
+                    <input type="text" id="modal-camera-name" name="modal-camera-name" style="width: 100%; padding: 5px; margin-bottom: 5px;" required><br>
+                    <label for="modal-camera-ip">IP Address:</label><br>
+                    <input type="text" id="modal-camera-ip" name="modal-camera-ip" style="width: 100%; padding: 5px; margin-bottom: 5px;" required><br>
+                    <label for="modal-camera-port">Port:</label><br>
+                    <input type="number" id="modal-camera-port" name="modal-camera-port" style="width: 100%; padding: 5px; margin-bottom: 5px;" required><br>
+                    <button type="submit" style="padding: 5px;">Add</button>
+                    <button type="button" id="close-modal" style="padding: 5px; margin-left: 10px;">Cancel</button>
+                </form>
+                <p id="modal-error" style="color: red; display: none;">Failed to add camera. Check the details and try again.</p>
+            </div>
+            <script>
+                // Show modal when clicking the "+" button
+                document.getElementById('add-camera-btn').addEventListener('click', function() {
+                    document.getElementById('camera-modal').style.display = 'block';
+                });
+
+                // Close modal
+                document.getElementById('close-modal').addEventListener('click', function() {
+                    document.getElementById('camera-modal').style.display = 'none';
+                    document.getElementById('modal-camera-name').value = '';
+                    document.getElementById('modal-camera-ip').value = '';
+                    document.getElementById('modal-camera-port').value = '';
+                    document.getElementById('modal-error').style.display = 'none';
+                });
+
+                // Handle form submission in the modal
+                document.getElementById('camera-form').addEventListener('submit', function(e) {
+                    e.preventDefault();
+                    var name = document.getElementById('modal-camera-name').value;
+                    var ip = document.getElementById('modal-camera-ip').value;
+                    var port = document.getElementById('modal-camera-port').value;
+
+                    fetch('/api/add_camera/', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-API-Key': window.AEGIS_API_KEY || 'MISSING_KEY'
+                        },
+                        body: JSON.stringify({
+                            name: name,
+                            ip: ip,
+                            port: port
+                        })
+                    }).then(response => {
+                        if (response.ok) {
+                            document.getElementById('camera-modal').style.display = 'none';
+                            document.getElementById('modal-camera-name').value = '';
+                            document.getElementById('modal-camera-ip').value = '';
+                            document.getElementById('modal-camera-port').value = '';
+                            document.getElementById('modal-error').style.display = 'none';
+                            updateCameraList();
+                        } else {
+                            document.getElementById('modal-error').style.display = 'block';
+                            setTimeout(() => document.getElementById('modal-error').style.display = 'none', 3000);
+                        }
+                    }).catch(error => {
+                        console.error('Error adding camera:', error);
+                        document.getElementById('modal-error').style.display = 'block';
+                        setTimeout(() => document.getElementById('modal-error').style.display = 'none', 3000);
+                    });
+                });
+
+                // Update camera list
+                function updateCameraList() {
+                    fetch('/api/cameras/', {
+                        headers: {
+                            'X-API-Key': window.AEGIS_API_KEY || 'MISSING_KEY'
+                        }
+                    })
+                    .then(response => {
+                        if (!response.ok) {
+                            console.error('Camera list fetch failed:', response.status, response.statusText);
+                            return;
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        var cameraLinks = document.getElementById('camera-links');
+                        cameraLinks.innerHTML = '';
+                        if (data.length === 0) {
+                            cameraLinks.innerHTML = '<li style="margin: 5px 0; padding: 8px; background: #f8f9fa; border: 1px solid #ccc; border-radius: 5px; color: #666;">No cameras configured yet.</li>';
+                        } else {
+                            data.forEach(camera => {
+                                var li = document.createElement('li');
+                                li.style.margin = '5px 0';
+                                li.style.padding = '8px';
+                                li.style.background = '#ffffff';
+                                li.style.border = '1px solid #ccc';
+                                li.style.borderRadius = '5px';
+                                li.style.boxShadow = '0 1px 3px rgba(0,0,0,0.1)';
+                                var a = document.createElement('a');
+                                a.href = `http://${camera.ip}:${camera.port}`;
+                                a.textContent = camera.name;
+                                a.target = '_blank';
+                                a.style.textDecoration = 'none';
+                                a.style.color = '#007bff';
+                                li.appendChild(a);
+                                cameraLinks.appendChild(li);
+                            });
+                        }
+                    })
+                    .catch(error => console.error('Error fetching camera list:', error));
+                }
+
+                // Initial update and polling
+                updateCameraList();
+                setInterval(updateCameraList, 5000); // Update every 5 seconds
+            </script>
         </div>
-        <div id="map" style="width: 50%; height: 100%; border: 1mm solid #333; box-sizing: border-box;"></div>
-        <div class="chat-window" style="width: 25%; height: 100%; background: #f0f0f0; padding: 10px; border: 1mm solid #333; box-sizing: border-box; display: flex; flex-direction: column;">
+        <div id="map" style="width: 50%; height: 100%; border: 1mm solid #333; box-sizing: border-box; float: left;"></div>
+        <div class="chat-window" style="width: 25%; height: 100%; background: #f0f0f0; padding: 10px; border: 1mm solid #333; box-sizing: border-box; display: flex; flex-direction: column; float: right;">
             <h3 style="margin: 0 0 10px 0;">Chat</h3>
             <button id="clear-chat-btn" style="margin-bottom: 10px; padding: 5px;">Clear Chat</button>
             <div class="chat-messages" style="flex: 1; overflow-y: auto; margin-bottom: 10px; padding: 10px; background: white; border: 1px solid #ccc; display: flex; flex-direction: column;" id="chat-messages">
